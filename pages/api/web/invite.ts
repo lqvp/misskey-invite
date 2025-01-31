@@ -6,99 +6,70 @@ import { prisma } from '~/prisma/client';
 export default async function API(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
   if (!session || !session.user) {
-    res.status(401).json({
-      error: 'You must sign in'
-    });
-    return;
+    return res.status(401).json({ error: 'You must sign in' });
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  // @ts-expect-error: ???
-  const userId = session.user.id as string;
 
+  const userId = session.user.id as string;
   if (!userId) {
-    res.status(401).json({
-      error: 'You must sign in'
-    });
-    return;
+    return res.status(401).json({ error: 'You must sign in' });
   }
 
   const invites = await prisma.invite.findUnique({
-    where: {
-      userId
-    }
+    where: { userId }
   });
 
   if (req.method === 'GET') {
-    res.status(200).json({
-      code: invites?.code
-    });
-    return;
+    return res.status(200).json({ code: invites?.code });
   } else if (req.method === 'POST') {
     if (invites) {
-      res.status(403).json({
-        error: 'You already have an invite'
-      });
-      return;
+      return res.status(403).json({ error: 'You already have an invite' });
     }
 
     try {
-      await prisma.invite.create({
-        data: {
-          userId
-        }
-      });
-
       const code = await getInvite();
 
-      await prisma.invite.update({
-        where: {
-          userId
-        },
-        data: {
-          code
-        }
+      await prisma.invite.create({
+        data: { userId, code }
       });
 
-      res.status(200).json({
-        code
-      });
+      return res.status(200).json({ code });
     } catch (error) {
-      res.status(500).json({
-        error: 'Something went wrong'
-      });
+      console.error('Invite generation error:', error);
 
-      await prisma.invite.deleteMany({
-        where: {
-          userId,
-          code: null
-        }
+      return res.status(500).json({
+        error: 'Something went wrong',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
-      return;
     }
   }
+
+  return res.status(405).json({ error: 'Method Not Allowed' });
 }
 
 const getInvite = async () => {
   const domain = process.env.NEXT_PUBLIC_MISSKEY_DOMAIN;
   const token = process.env.MISSKEY_TOKEN;
+
   if (!domain || !token) {
     throw new Error('Missing Misskey domain or token');
   }
 
-  const res = await fetch(`https://${domain}/api/invite`, {
-    method: 'POST',
-    body: JSON.stringify({
-      i: token
-    }),
-    headers: {
-      'Content-Type': 'application/json'
+  try {
+    const res = await fetch(`https://${domain}/api/invite/create`, {
+      method: 'POST',
+      body: JSON.stringify({ i: token }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to get invite: ${errorText}`);
     }
-  });
-  if (!res.ok) {
-    throw new Error('Failed to get invite');
+
+    const { code } = (await res.json()) as { code: string };
+    return code;
+  } catch (error) {
+    console.error('Misskey invite fetch error:', error);
+    throw error;
   }
-
-  const { code } = (await res.json()) as { code: string };
-
-  return code;
 };
