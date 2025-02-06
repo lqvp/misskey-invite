@@ -9,7 +9,7 @@ export default async function API(req: NextApiRequest, res: NextApiResponse) {
     return res.status(401).json({ error: 'You must sign in' });
   }
 
-  const userId = session.user.id as string;
+  const userId = session.user as string;
   if (!userId) {
     return res.status(401).json({ error: 'You must sign in' });
   }
