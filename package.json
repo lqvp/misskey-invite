@@ -34,7 +34,7 @@
   "dependencies": {
     "@prisma/client": "4.13.0",
     "next": "13.2.4",
-    "next-auth": "4.22.1",
+    "next-auth": "4.24.14",
     "prisma": "4.13.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
