@@ -40,7 +40,7 @@
     "react-dom": "18.2.0",
     "react-md-spinner": "1.0.0",
     "ress": "5.0.2",
-    "swr": "2.1.3"
+    "swr": "2.4.2"
   },
   "prettier": "@nzws/prettier-config",
   "packageManager": "yarn@3.5.0"
